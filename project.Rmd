@@ -1,0 +1,47 @@
+---
+title: "Practical Machine Learning Project"
+author: "farnigus"
+date: "Tuesday, June 16, 2015"
+output: html_document
+---
+#Introduction
+This is the assignment for the coursera class, "Practical Machine Learning". We will take the data provided at  http://groupware.les.inf.puc-rio.br/har. and attempt to apply an prediction algorithm to the data.
+
+```{r initialize}
+rm(list=ls())
+library(caret)
+train<-read.csv("pml-training.csv")
+test<-read.csv("pml-testing.csv")
+set.seed(54321)
+```
+
+
+## Trim and split the data
+A quick peek at the data shows that there are a lot of columns that are essentially empty. More importantly, there are many columns are are empty in the final testing data. It doesn't make any sense to build a model using any of those variables, so first we will drop those columns. Lets also drop the column "X" which is just a row number and doesn't really contain useful data. It is not clear if we should drop the names and timestamps. One could argue that individuals do the exercises differently and knowing which individual is doing the exercises will improve accuracy. On the other hand, if we want to be able to extend our model to people that have not been previously tested, we should probably drop the individual identifier.
+
+Next, we'll save the final testing set until the end, and we'll break up our training data into two sets that will be used to tune the bias/variance or in/out of sample error in the model.
+
+```{r Split Data}
+drop<-is.na(test[1,])
+drop[1,c(1:7)]=TRUE
+test<-test[,!drop]
+train<-train[,!drop]
+
+final_test<-test
+inTrain<-createDataPartition(y=train$classe,p=0.75, list=FALSE)
+data<-train
+train<-data[inTrain,]
+test<-data[-inTrain,]
+```
+
+## Build a model
+If we wanted to be elegant, it would make sense to do more data exploration to see what we can learn about the data and then apply some intuition or insight to direct our model. Alternatively, we could just keep every variable and see how it turns out. The first attempt will be for a random forest.
+
+```{r build models}
+model_rf<-train(classe~., data=train, method="rf", do.trace=250, trControl=trainControl(method="cv", number = 3))
+predict_rf<-predict(model_rf, test)
+result_rf<-table(predict_rf, test$classe)
+confusionMatrix(result_rf)
+```
+
+Not bad. I guess we're done building the model.
